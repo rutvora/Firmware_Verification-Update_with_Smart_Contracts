@@ -38,8 +38,8 @@ contract Verifier {
         }
     }
 
-    function getStatus() public returns (string memory){
-        if (msg.sender != requestNode) return "Unauthorized";
+    function getStatus() public view returns (string memory){
+//        if (msg.sender != requestNode) return "Unauthorized";
         return needUpdate ? "Update" : (hashVerificationCount > verLimit ? "Verified" : "Wait");
     }
 
