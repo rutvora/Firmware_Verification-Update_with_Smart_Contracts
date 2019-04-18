@@ -1,14 +1,14 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.5.7;
 
 contract Verifier {
-    address requestNode;
-    string requestNodeHash;
-    int requestNodeVersion;
-    bool needUpdate;
-    int hashVerificationCount;
-    int verLimit = 6;
+    address private requestNode;
+    string private requestNodeHash;
+    int private requestNodeVersion;
+    bool private needUpdate;
+    int private hashVerificationCount;
+    int private verLimit = 6;
 
-    function Verifier(address reqNode, string hash, int version){
+    constructor(address reqNode, string memory hash, int version) public {
         requestNode = reqNode;
         requestNodeHash = hash;
         requestNodeVersion = version;
@@ -16,9 +16,17 @@ contract Verifier {
         hashVerificationCount = 0;
     }
 
-    function verify(string hash, int version) returns (string){
+    function compareStrings(string memory a, string memory b) internal returns (bool) {
+        if (bytes(a).length != bytes(b).length) {
+            return false;
+        } else {
+            return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+        }
+    }
+
+    function verify(string memory hash, int version) public returns (string memory){
         if (version == requestNodeVersion) {
-            if (hash == requestNodeHash) count++;
+            if (compareStrings(hash, requestNodeHash)) hashVerificationCount++;
             return "Thanks";
         } else {
             if (version > requestNodeVersion) {
@@ -30,12 +38,12 @@ contract Verifier {
         }
     }
 
-    function getStatus() returns (string){
+    function getStatus() public returns (string memory){
         if (msg.sender != requestNode) return "Unauthorized";
-        return needUpdate ? "Update" : (count > verLimit ? "Verified" : "Wait");
+        return needUpdate ? "Update" : (hashVerificationCount > verLimit ? "Verified" : "Wait");
     }
 
-    function destroy() {
-        if (msg.sender == requestNode) selfdestruct(requestNode);
+    function destroy() public {
+        if (msg.sender == requestNode) selfdestruct(address(uint160(requestNode)));     //Typecast address to address payable
     }
 }
