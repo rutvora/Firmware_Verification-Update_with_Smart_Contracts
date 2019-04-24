@@ -10,7 +10,8 @@ import (
 	"math/big"
 )
 
-func SendResponse(sim *backends.SimulatedBackend, contract *contracts.Verifier, hash string, responseNodeVer *big.Int) {
+//Send the node's own hash and version to the contract for comparison
+func sendResponse(sim *backends.SimulatedBackend, contract *contracts.Verifier, hash string, responseNodeVer *big.Int) {
 	var auth *bind.TransactOpts
 	for key := range initAddresses {
 		auth = key
@@ -25,20 +26,29 @@ func SendResponse(sim *backends.SimulatedBackend, contract *contracts.Verifier, 
 	sim.Commit()
 }
 
-func InitiateResponses(sim *backends.SimulatedBackend, contract *contracts.Verifier) {
+//Initiates response nodes for simulation
+func InitiateResponseNodes(sim *backends.SimulatedBackend) {
 	version := new(big.Int).SetInt64(1)
 
-	go newResponseNode("model1", "hash1", version, sim)
-	SendResponse(sim, contract, "hash1", version)
-	SendResponse(sim, contract, "hash1", version)
-	SendResponse(sim, contract, "hash1", version)
-	SendResponse(sim, contract, "hash1", version)
-	SendResponse(sim, contract, "hash1", version)
-	SendResponse(sim, contract, "hash1", version)
-	//version.SetInt64(2)
-	SendResponse(sim, contract, "hash1", version)
+	newResponseNode("model1", "hash1", version, sim)
+	newResponseNode("model1", "hash1", version, sim)
+	newResponseNode("model1", "hash1", version, sim)
+	newResponseNode("model1", "hash1", version, sim)
+	newResponseNode("model1", "hash1", version, sim)
+	//version = new(big.Int).SetInt64(2)
+	newResponseNode("model1", "hash1", version, sim)
+	newResponseNode("model1", "hash1", version, sim)
+	//
+	//newResponseNode("model2", "hash2", version, sim)
+	//newResponseNode("model2", "hash2", version, sim)
+	//newResponseNode("model2", "hash2", version, sim)
+	//newResponseNode("model2", "hash2", version, sim)
+	//newResponseNode("model2", "hash2", version, sim)
+	//newResponseNode("model2", "hash2", version, sim)
+	//newResponseNode("model2", "hash2", version, sim)
 }
 
+//Creates a bew response node and subscribes to the MQTT broker
 func newResponseNode(model string, hash string, version *big.Int, sim *backends.SimulatedBackend) {
 	opts := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
 	client := mqtt.NewClient(opts)
@@ -49,11 +59,10 @@ func newResponseNode(model string, hash string, version *big.Int, sim *backends.
 
 	var messageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		contract, _ := contracts.NewVerifier(common.HexToAddress(string(msg.Payload())), sim)
-		SendResponse(sim, contract, hash, version)
+		sendResponse(sim, contract, hash, version)
 	}
 	token = client.Subscribe(model, 0, messageHandler)
-	//token.Wait()
-	//if token.Wait() && token.Error() != nil {
-	//	log.Fatalln(token.Error())
-	//}
+	if token.Wait() && token.Error() != nil {
+		log.Fatalln(token.Error())
+	}
 }

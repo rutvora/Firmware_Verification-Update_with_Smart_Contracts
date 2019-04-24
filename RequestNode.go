@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+//Sends out the request to other devices for verification using MQTT
 func broadcastRequest(model string, msg string) {
 	opts := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
 	client := mqtt.NewClient(opts)
@@ -25,6 +26,7 @@ func broadcastRequest(model string, msg string) {
 	}
 }
 
+//Creates a new smart contract
 func createContract(sim *backends.SimulatedBackend, model string, hash string, reqNodeVer *big.Int) (*bind.TransactOpts, *contracts.Verifier, string) {
 	var auth *bind.TransactOpts
 	for key := range initAddresses {
@@ -42,8 +44,9 @@ func createContract(sim *backends.SimulatedBackend, model string, hash string, r
 	return auth, contract, auth.From.String()
 }
 
+//	Checks the verification status of the smart contract
+//	(smart contracts only send responses and never initiate a message)
 func checkContract(auth *bind.TransactOpts, reqNode string, contract *contracts.Verifier, waitGroup *sync.WaitGroup) {
-
 LOOP:
 	for {
 		time.Sleep(time.Millisecond * 1)
@@ -57,13 +60,20 @@ LOOP:
 			break LOOP
 		}
 	}
+	_, _ = contract.Destroy(auth)
 	waitGroup.Done()
 }
 
-func InitiateRequests(sim *backends.SimulatedBackend, waitGroup *sync.WaitGroup) *contracts.Verifier {
+//Initiate Request Nodes for simulation
+func InitiateRequestNodes(sim *backends.SimulatedBackend, waitGroup *sync.WaitGroup) {
 	version := new(big.Int).SetInt64(1)
-	auth, contract, addr := createContract(sim, "model1", "hash1", version)
+	newRequestNode("model1", "hash1", version, sim, waitGroup)
+	//newRequestNode("model2", "hash2", version, sim, waitGroup)
+}
+
+//Adds a request node in the simulation
+func newRequestNode(model string, hash string, version *big.Int, sim *backends.SimulatedBackend, waitGroup *sync.WaitGroup) {
+	auth, contract, addr := createContract(sim, model, hash, version)
 	go checkContract(auth, addr, contract, waitGroup)
 	waitGroup.Add(1)
-	return contract
 }

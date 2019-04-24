@@ -28,17 +28,16 @@ func initiateSimulatedBackend() *backends.SimulatedBackend {
 
 func main() {
 	//Simulated Backend to avoid mining during demo
-	maxAccounts = 10
+	maxAccounts = 20
 	initAddresses = make(map[*bind.TransactOpts]core.GenesisAccount, maxAccounts)
 	sim := initiateSimulatedBackend()
 	var waitGroup sync.WaitGroup
 
-	//Initiate request Node
-	contract := InitiateRequests(sim, &waitGroup)
-
 	//Initiate Response Nodes
-	InitiateResponses(sim, contract)
+	InitiateResponseNodes(sim)
+
+	//Initiate request Node
+	InitiateRequestNodes(sim, &waitGroup)
 
 	waitGroup.Wait()
-	//select {}
 }
