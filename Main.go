@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
+	"sync"
 )
 
 var initAddresses map[*bind.TransactOpts]core.GenesisAccount
@@ -30,23 +31,13 @@ func main() {
 	maxAccounts = 10
 	initAddresses = make(map[*bind.TransactOpts]core.GenesisAccount, maxAccounts)
 	sim := initiateSimulatedBackend()
+	var waitGroup sync.WaitGroup
 
 	//Initiate request Node
-	i := new(big.Int)
-	i.SetInt64(1)
-	auth, contract, addr := CreateContract(sim, "hash1", i)
-	go CheckContract(auth, addr, contract)
+	contract := InitiateRequests(sim, &waitGroup)
 
 	//Initiate Response Nodes
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	//i.SetInt64(2)
-	SendResponse(sim, contract, "hash1", i)
+	InitiateResponses(sim, contract, &waitGroup)
 
-	//fmt.Println("Finished")
-	select {}
+	waitGroup.Wait()
 }
