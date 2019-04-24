@@ -37,7 +37,8 @@ func main() {
 	contract := InitiateRequests(sim, &waitGroup)
 
 	//Initiate Response Nodes
-	InitiateResponses(sim, contract, &waitGroup)
+	InitiateResponses(sim, contract)
 
 	waitGroup.Wait()
+	//select {}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"./Contracts"
 	"fmt"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"log"
@@ -11,14 +12,28 @@ import (
 	"time"
 )
 
-func createContract(sim *backends.SimulatedBackend, hash string, reqNodeVer *big.Int) (*bind.TransactOpts, *contracts.Verifier, string) {
+func broadcastRequest(model string, msg string) {
+	opts := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
+	client := mqtt.NewClient(opts)
+	token := client.Connect()
+	if token.Wait() && token.Error() != nil {
+		log.Fatalln(token.Error())
+	}
+	token = client.Publish(model, 0, false, msg)
+	if token.Wait() && token.Error() != nil {
+		log.Fatalln(token.Error())
+	}
+}
+
+func createContract(sim *backends.SimulatedBackend, model string, hash string, reqNodeVer *big.Int) (*bind.TransactOpts, *contracts.Verifier, string) {
 	var auth *bind.TransactOpts
 	for key := range initAddresses {
 		auth = key
 		delete(initAddresses, auth)
 		break
 	}
-	_, _, contract, err := contracts.DeployVerifier(auth, sim, auth.From, hash, reqNodeVer)
+	addr, _, contract, err := contracts.DeployVerifier(auth, sim, auth.From, hash, reqNodeVer)
+	broadcastRequest(model, addr.String())
 
 	if err != nil {
 		log.Fatalln(err)
@@ -46,8 +61,8 @@ LOOP:
 }
 
 func InitiateRequests(sim *backends.SimulatedBackend, waitGroup *sync.WaitGroup) *contracts.Verifier {
-	i := new(big.Int).SetInt64(1)
-	auth, contract, addr := createContract(sim, "hash1", i)
+	version := new(big.Int).SetInt64(1)
+	auth, contract, addr := createContract(sim, "model1", "hash1", version)
 	go checkContract(auth, addr, contract, waitGroup)
 	waitGroup.Add(1)
 	return contract

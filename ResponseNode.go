@@ -2,12 +2,12 @@ package main
 
 import (
 	"./Contracts"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
+	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
-	"sync"
 )
 
 func SendResponse(sim *backends.SimulatedBackend, contract *contracts.Verifier, hash string, responseNodeVer *big.Int) {
@@ -25,24 +25,35 @@ func SendResponse(sim *backends.SimulatedBackend, contract *contracts.Verifier, 
 	sim.Commit()
 }
 
-func InitiateResponses(sim *backends.SimulatedBackend, contract *contracts.Verifier, waitgroup *sync.WaitGroup) {
-	i := new(big.Int).SetInt64(1)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	SendResponse(sim, contract, "hash1", i)
-	//i.SetInt64(2)
-	SendResponse(sim, contract, "hash1", i)
+func InitiateResponses(sim *backends.SimulatedBackend, contract *contracts.Verifier) {
+	version := new(big.Int).SetInt64(1)
+
+	go newResponseNode("model1", "hash1", version, sim)
+	SendResponse(sim, contract, "hash1", version)
+	SendResponse(sim, contract, "hash1", version)
+	SendResponse(sim, contract, "hash1", version)
+	SendResponse(sim, contract, "hash1", version)
+	SendResponse(sim, contract, "hash1", version)
+	SendResponse(sim, contract, "hash1", version)
+	//version.SetInt64(2)
+	SendResponse(sim, contract, "hash1", version)
 }
 
-func newResponseNode(model string, hash string, version big.Int) {
-	opts := mqtt.NewClientOptions().AddBroker("tcp://172.16.8.33:1883")
+func newResponseNode(model string, hash string, version *big.Int, sim *backends.SimulatedBackend) {
+	opts := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 	if token.Wait() && token.Error() != nil {
 		log.Fatalln(token.Error())
 	}
 
+	var messageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		contract, _ := contracts.NewVerifier(common.HexToAddress(string(msg.Payload())), sim)
+		SendResponse(sim, contract, hash, version)
+	}
+	token = client.Subscribe(model, 0, messageHandler)
+	//token.Wait()
+	//if token.Wait() && token.Error() != nil {
+	//	log.Fatalln(token.Error())
+	//}
 }
